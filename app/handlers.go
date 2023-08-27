@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"banking/service"
+
 	"github.com/gorilla/mux"
 )
 
@@ -67,11 +69,12 @@ func getTime(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getAllCustomers(w http.ResponseWriter, r *http.Request) {
-	customers := []Customer{
-		{"Ashish", "New Delhi", "110075 "},
-		{"Rob", "New Delhi", "110075 "},
-	}
+type CustomerHandler struct {
+	service service.CustomerService
+}
+
+func (ch *CustomerHandler) getAllCustomers(w http.ResponseWriter, r *http.Request) {
+	customers, _ := ch.service.GetAllCustomers()
 
 	if r.Header.Get("Content-Type") == "application/xml" {
 		w.Header().Add("content-type", "application/xml")
