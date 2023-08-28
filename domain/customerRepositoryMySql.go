@@ -2,6 +2,8 @@ package domain
 
 import (
 	"database/sql"
+	"fmt"
+	"os"
 	"time"
 
 	"banking/errs"
@@ -53,7 +55,14 @@ func (s CustomerRepositoryMySql) ById(id string) (*Customer, *errs.AppError) {
 }
 
 func NewCustomerRepositoryMySql() CustomerRepositoryMySql {
-	db, err := sqlx.Open("mysql", "root:codecamp@/banking")
+	dbAddr := os.Getenv("DB_ADDR")
+	dbPort := os.Getenv("DB_PORT")
+	dbUser := os.Getenv("DB_USER")
+	dbPasswd := os.Getenv("DB_PASSWD")
+	dbName := os.Getenv("DB_NAME")
+	dataSource := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPasswd, dbAddr, dbPort, dbName)
+
+	db, err := sqlx.Open("mysql", dataSource)
 	if err != nil {
 		panic(err)
 	}
