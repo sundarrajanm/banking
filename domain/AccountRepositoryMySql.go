@@ -3,6 +3,7 @@ package domain
 import (
 	"banking/errs"
 	"banking/logger"
+	"database/sql"
 	"strconv"
 
 	"github.com/jmoiron/sqlx"
@@ -10,6 +11,41 @@ import (
 
 type AccountRepositoryMySql struct {
 	db *sqlx.DB
+}
+
+func (a AccountRepositoryMySql) GetAccount(accountId string) (*Account, *errs.AppError) {
+	GetAccountSql := "select * from accounts where account_id = ?"
+	var account Account
+	err := a.db.Get(&account, GetAccountSql, accountId)
+	if err == sql.ErrNoRows {
+		return nil, errs.NewNotFoundError("Account not found")
+	} else if err != nil {
+		logger.Error("Unexpected database error while fetching account: " + err.Error())
+		return nil, errs.NewUnexpectedError("Unexpected database error")
+	}
+	return &account, nil
+}
+
+func (a AccountRepositoryMySql) Debit(amount float64, accountId string) *errs.AppError {
+	WithdrawAmountSql := "update accounts set amount = amount - ? where account_id = ?"
+
+	_, err := a.db.Exec(WithdrawAmountSql, amount, accountId)
+	if err != nil {
+		logger.Error("Unexpected database error while withdrawing amount: " + err.Error())
+		return errs.NewUnexpectedError("Unexpected database error")
+	}
+	return nil
+}
+
+func (a AccountRepositoryMySql) Credit(amount float64, accountId string) *errs.AppError {
+	DepositAmountSql := "update accounts set amount = amount + ? where account_id = ?"
+
+	_, err := a.db.Exec(DepositAmountSql, amount, accountId)
+	if err != nil {
+		logger.Error("Unexpected database error while depositing amount: " + err.Error())
+		return errs.NewUnexpectedError("Unexpected database error")
+	}
+	return nil
 }
 
 func (a AccountRepositoryMySql) Save(account Account) (*Account, *errs.AppError) {
