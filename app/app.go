@@ -2,9 +2,10 @@ package app
 
 import (
 	"banking/domain"
+	"banking/logger"
 	"banking/service"
+
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -23,7 +24,7 @@ func Start() {
 	router.HandleFunc("/customers/{customer_id:[0-9]+}", ch.getCustomer)
 	router.HandleFunc("/api/time", getTime)
 
-	log.Fatal(http.ListenAndServe("localhost:8000", router))
+	logger.Fatal(http.ListenAndServe("localhost:8000", router))
 }
 
 func createCustomer(w http.ResponseWriter, r *http.Request) {
