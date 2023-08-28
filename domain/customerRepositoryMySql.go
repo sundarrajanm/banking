@@ -14,13 +14,16 @@ type CustomerRepositoryMySql struct {
 	db *sql.DB
 }
 
-func (s CustomerRepositoryMySql) FindAll() ([]Customer, error) {
-	findAllSql := "select * from customers"
-	rows, err := s.db.Query(findAllSql)
+func (s CustomerRepositoryMySql) FindAllByStatus(status string) ([]Customer, *errs.AppError) {
+	findAllByStatusSql := "select * from customers where status = ?"
+	rows, err := s.db.Query(findAllByStatusSql, status)
+	return toCustomers(rows, err)
+}
 
+func toCustomers(rows *sql.Rows, err error) ([]Customer, *errs.AppError) {
 	if err != nil {
 		log.Println("Error while querying customer table: " + err.Error())
-		return nil, err
+		return nil, errs.NewUnexpectedError("unexpected database error")
 	}
 
 	customers := make([]Customer, 0)
@@ -30,11 +33,17 @@ func (s CustomerRepositoryMySql) FindAll() ([]Customer, error) {
 
 		if err != nil {
 			log.Println("Error while scanning customers: " + err.Error())
-			return nil, err
+			return nil, errs.NewUnexpectedError("unexpected database error")
 		}
 		customers = append(customers, c)
 	}
 	return customers, nil
+}
+
+func (s CustomerRepositoryMySql) FindAll() ([]Customer, *errs.AppError) {
+	findAllSql := "select * from customers"
+	rows, err := s.db.Query(findAllSql)
+	return toCustomers(rows, err)
 }
 
 func (s CustomerRepositoryMySql) ById(id string) (*Customer, *errs.AppError) {

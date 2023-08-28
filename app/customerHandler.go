@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"banking/domain"
+	"banking/errs"
 	"banking/service"
 
 	"github.com/gorilla/mux"
@@ -18,7 +20,21 @@ type CustomerHandler struct {
 }
 
 func (ch *CustomerHandler) getAllCustomers(w http.ResponseWriter, r *http.Request) {
-	customers, _ := ch.service.GetAllCustomers()
+	var err *errs.AppError
+	var customers []domain.Customer
+
+	status := r.URL.Query().Get("status")
+	if status == "" {
+		customers, err = ch.service.GetAllCustomers()
+	} else {
+		customers, err = ch.service.GetAllCustomersByStatus(status)
+	}
+
+	if err != nil {
+		writeResponse(w, err.Code, err.AsMessage())
+		return
+	}
+
 	writeResponse(w, http.StatusOK, customers)
 }
 
