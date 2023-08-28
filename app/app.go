@@ -6,11 +6,13 @@ import (
 	"banking/service"
 	"errors"
 	"os"
+	"time"
 
 	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/jmoiron/sqlx"
 )
 
 func EnvVarsNotEmptyCheck(vars ...string) {
@@ -28,15 +30,16 @@ func Start() {
 		"DB_ADDR", "DB_PORT", "DB_USER", "DB_PASSWD", "DB_NAME",
 	)
 
+	db := getDBClient()
+	ch := CustomerHandler{service.NewCustomerService(domain.NewCustomerRepositoryMySql(db))}
+	ah := AccountHandler{service.NewAccountService(domain.NewAccountRepositoryMySql(db))}
+
 	router := mux.NewRouter()
-
-	// ch := CustomerHandler{service.NewCustomerService(domain.NewCustomerRepositoryStub())}
-	ch := CustomerHandler{service.NewCustomerService(domain.NewCustomerRepositoryMySql())}
-
 	router.HandleFunc("/greet", greet).Methods(http.MethodGet)
 	router.HandleFunc("/customers", ch.getAllCustomers).Methods(http.MethodGet)
+	router.HandleFunc("/customers/{customer_id:[0-9]+}", ch.getCustomer).Methods(http.MethodGet)
+	router.HandleFunc("/customers/{customer_id:[0-9]+}/account", ah.NewAccount).Methods(http.MethodPost)
 	router.HandleFunc("/customers", createCustomer).Methods(http.MethodPost)
-	router.HandleFunc("/customers/{customer_id:[0-9]+}", ch.getCustomer)
 	router.HandleFunc("/api/time", getTime)
 
 	serverAddr := os.Getenv("SERVER_ADDR")
@@ -47,4 +50,23 @@ func Start() {
 
 func createCustomer(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "Post request received")
+}
+
+func getDBClient() *sqlx.DB {
+	dbAddr := os.Getenv("DB_ADDR")
+	dbPort := os.Getenv("DB_PORT")
+	dbUser := os.Getenv("DB_USER")
+	dbPasswd := os.Getenv("DB_PASSWD")
+	dbName := os.Getenv("DB_NAME")
+	dataSource := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPasswd, dbAddr, dbPort, dbName)
+
+	db, err := sqlx.Open("mysql", dataSource)
+	if err != nil {
+		panic(err)
+	}
+	// See "Important settings" section.
+	db.SetConnMaxLifetime(time.Minute * 3)
+	db.SetMaxOpenConns(10)
+	db.SetMaxIdleConns(10)
+	return db
 }
