@@ -1,6 +1,6 @@
 package domain
 
-import "banking/errs"
+import "banking/dto"
 
 type Transaction struct {
 	TransactionId   string `db:"transaction_id"`
@@ -10,6 +10,13 @@ type Transaction struct {
 	TransactionDate string `db:"transaction_date"`
 }
 
-type TransactionRepository interface {
-	Save(Transaction) (*Transaction, *errs.AppError)
+func (t Transaction) IsWithdrawal() bool {
+	return t.TransactionType == "withdrawal"
+}
+
+func (t Transaction) ToResponseDTO() dto.NewTransactionResponse {
+	return dto.NewTransactionResponse{
+		NewBalance:    t.Amount,
+		TransactionId: t.TransactionId,
+	}
 }

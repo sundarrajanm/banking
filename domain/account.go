@@ -14,6 +14,10 @@ type Account struct {
 	Status      string
 }
 
+func (a Account) CanWithdraw(amount float64) bool {
+	return amount <= a.Amount
+}
+
 func (a Account) ToNewAccountResponseDTO() dto.NewAccountResponse {
 	return dto.NewAccountResponse{AccountId: a.AccountId}
 }
@@ -25,9 +29,6 @@ type AccountRepository interface {
 	// Get the Account by AccountId
 	GetAccount(string) (*Account, *errs.AppError)
 
-	// Deduct the given amount from the Account
-	Debit(float64, string) *errs.AppError
-
-	// Add the given amount to the Account
-	Credit(float64, string) *errs.AppError
+	// Update account and transaction table atomically
+	DoTransaction(Transaction) (*Transaction, *errs.AppError)
 }

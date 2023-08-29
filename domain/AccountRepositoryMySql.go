@@ -26,28 +26,6 @@ func (a AccountRepositoryMySql) GetAccount(accountId string) (*Account, *errs.Ap
 	return &account, nil
 }
 
-func (a AccountRepositoryMySql) Debit(amount float64, accountId string) *errs.AppError {
-	WithdrawAmountSql := "update accounts set amount = amount - ? where account_id = ?"
-
-	_, err := a.db.Exec(WithdrawAmountSql, amount, accountId)
-	if err != nil {
-		logger.Error("Unexpected database error while withdrawing amount: " + err.Error())
-		return errs.NewUnexpectedError("Unexpected database error")
-	}
-	return nil
-}
-
-func (a AccountRepositoryMySql) Credit(amount float64, accountId string) *errs.AppError {
-	DepositAmountSql := "update accounts set amount = amount + ? where account_id = ?"
-
-	_, err := a.db.Exec(DepositAmountSql, amount, accountId)
-	if err != nil {
-		logger.Error("Unexpected database error while depositing amount: " + err.Error())
-		return errs.NewUnexpectedError("Unexpected database error")
-	}
-	return nil
-}
-
 func (a AccountRepositoryMySql) Save(account Account) (*Account, *errs.AppError) {
 	sqlInsert := "insert into accounts (customer_id, opening_date, account_type, amount, status) values (? , ?, ?, ?, ?)"
 
@@ -66,6 +44,59 @@ func (a AccountRepositoryMySql) Save(account Account) (*Account, *errs.AppError)
 
 	account.AccountId = strconv.FormatInt(id, 10)
 	return &account, nil
+}
+
+func (a AccountRepositoryMySql) DoTransaction(tx Transaction) (*Transaction, *errs.AppError) {
+
+	dbTx, err := a.db.Begin()
+	if err != nil {
+		logger.Error("Unable to begin DB transaction: " + err.Error())
+		return nil, errs.NewUnexpectedError("Unexpected database error")
+	}
+
+	sqlInsert := "insert into transactions (account_id, amount, transaction_type, transaction_date) values (?, ?, ?, ?)"
+	result, err := a.db.Exec(sqlInsert, tx.AccountId, tx.Amount, tx.TransactionType, tx.TransactionDate)
+
+	if err != nil {
+		dbTx.Rollback()
+		logger.Error("Unable to insert transaction: " + err.Error())
+		return nil, errs.NewUnexpectedError("Unexpected database error")
+	}
+
+	if tx.IsWithdrawal() {
+		_, err = a.db.Exec("update accounts set amount = amount - ? where account_id = ?", tx.Amount, tx.AccountId)
+	} else {
+		_, err = a.db.Exec("update accounts set amount = amount + ? where account_id = ?", tx.Amount, tx.AccountId)
+	}
+
+	if err != nil {
+		dbTx.Rollback()
+		logger.Error("Error while saving transaction: " + err.Error())
+		return nil, errs.NewUnexpectedError("Unexpected database error")
+	}
+
+	err = dbTx.Commit()
+	if err != nil {
+		dbTx.Rollback()
+		logger.Error("Error while committing transaction: " + err.Error())
+		return nil, errs.NewUnexpectedError("Unexpected database error")
+	}
+
+	txId, err := result.LastInsertId()
+	if err != nil {
+		logger.Error("Error while getting transaction id: " + err.Error())
+		return nil, errs.NewUnexpectedError("Unexpected database error")
+	}
+
+	account, appError := a.GetAccount(tx.AccountId)
+	if appError != nil {
+		return nil, appError
+	}
+
+	tx.TransactionId = strconv.FormatInt(txId, 10)
+	tx.Amount = account.Amount
+
+	return &tx, nil
 }
 
 func NewAccountRepositoryMySql(db *sqlx.DB) AccountRepositoryMySql {

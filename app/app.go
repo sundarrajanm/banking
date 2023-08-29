@@ -32,17 +32,15 @@ func Start() {
 
 	db := getDBClient()
 	acctRepo := domain.NewAccountRepositoryMySql(db)
-	txRepo := domain.NewTransactionRepositoryMySql(db)
 	ch := CustomerHandler{service.NewCustomerService(domain.NewCustomerRepositoryMySql(db))}
 	ah := AccountHandler{service.NewAccountService(acctRepo)}
-	th := TransactionHandler{service.NewTransactionService(acctRepo, txRepo)}
 
 	router := mux.NewRouter()
 	router.HandleFunc("/greet", greet).Methods(http.MethodGet)
 	router.HandleFunc("/customers", ch.getAllCustomers).Methods(http.MethodGet)
 	router.HandleFunc("/customers/{customer_id:[0-9]+}", ch.getCustomer).Methods(http.MethodGet)
 	router.HandleFunc("/customers/{customer_id:[0-9]+}/accounts", ah.NewAccount).Methods(http.MethodPost)
-	router.HandleFunc("/customers/{customer_id:[0-9]+}/accounts/{account_id:[0-9]+}/transaction", th.executeTransaction).Methods(http.MethodPost)
+	router.HandleFunc("/customers/{customer_id:[0-9]+}/accounts/{account_id:[0-9]+}/transaction", ah.executeTransaction).Methods(http.MethodPost)
 	router.HandleFunc("/customers", createCustomer).Methods(http.MethodPost)
 	router.HandleFunc("/api/time", getTime)
 
