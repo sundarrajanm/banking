@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"banking/domain"
+	"banking/dto"
 	"banking/errs"
 	"banking/service"
 
@@ -21,7 +21,7 @@ type CustomerHandler struct {
 
 func (ch *CustomerHandler) getAllCustomers(w http.ResponseWriter, r *http.Request) {
 	var err *errs.AppError
-	var customers []domain.Customer
+	var customers []dto.CustomerResponse
 
 	status := r.URL.Query().Get("status")
 	if status == "" {
