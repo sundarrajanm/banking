@@ -36,22 +36,37 @@ func Start() {
 	ah := AccountHandler{service.NewAccountService(acctRepo)}
 
 	router := mux.NewRouter()
+
+	router.
+		HandleFunc("/customers", ch.getAllCustomers).
+		Methods(http.MethodGet).
+		Name("GetAllCustomers")
+
+	router.
+		HandleFunc("/customers/{customer_id:[0-9]+}", ch.getCustomer).
+		Methods(http.MethodGet).
+		Name("GetCustomer")
+
+	router.
+		HandleFunc("/customers/{customer_id:[0-9]+}/accounts", ah.NewAccount).
+		Methods(http.MethodPost).
+		Name("NewAccount")
+
+	router.
+		HandleFunc("/customers/{customer_id:[0-9]+}/accounts/{account_id:[0-9]+}/transaction", ah.executeTransaction).
+		Methods(http.MethodPost).
+		Name("NewTransaction")
+
 	router.HandleFunc("/greet", greet).Methods(http.MethodGet)
-	router.HandleFunc("/customers", ch.getAllCustomers).Methods(http.MethodGet)
-	router.HandleFunc("/customers/{customer_id:[0-9]+}", ch.getCustomer).Methods(http.MethodGet)
-	router.HandleFunc("/customers/{customer_id:[0-9]+}/accounts", ah.NewAccount).Methods(http.MethodPost)
-	router.HandleFunc("/customers/{customer_id:[0-9]+}/accounts/{account_id:[0-9]+}/transaction", ah.executeTransaction).Methods(http.MethodPost)
-	router.HandleFunc("/customers", createCustomer).Methods(http.MethodPost)
 	router.HandleFunc("/api/time", getTime)
+
+	am := AuthMiddleware{domain.NewAuthRepository()}
+	router.Use(am.authorizationHandler())
 
 	serverAddr := os.Getenv("SERVER_ADDR")
 	serverPort := os.Getenv("SERVER_PORT")
 	serverUrl := fmt.Sprintf("%s:%s", serverAddr, serverPort)
 	logger.Fatal(http.ListenAndServe(serverUrl, router))
-}
-
-func createCustomer(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, "Post request received")
 }
 
 func getDBClient() *sqlx.DB {
