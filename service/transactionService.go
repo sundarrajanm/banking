@@ -17,17 +17,21 @@ type DefaultTransactionService struct {
 }
 
 func (s DefaultTransactionService) NewTransaction(req dto.NewTransactionRequest) (*dto.NewTransactionResponse, *errs.AppError) {
+
+	err := req.Validate()
+	if err != nil {
+		return nil, err
+	}
+
 	account, err := s.acctRepo.GetAccount(req.AccountId)
 	if err != nil {
 		return nil, err
 	}
 
-	// req.Validate() -- for negative amount and transaction type check
-
 	// Do the Transaction - debit or credit
 	if req.TransactionType == "withdrawal" {
 		if account.Amount < req.Amount {
-			return nil, errs.NewValidationError("Transaction declined: Withdraw amount is more than the account balance")
+			return nil, errs.NewValidationError("Withdraw amount is more than the account balance")
 		}
 
 		err := s.acctRepo.Debit(req.Amount, req.AccountId)
